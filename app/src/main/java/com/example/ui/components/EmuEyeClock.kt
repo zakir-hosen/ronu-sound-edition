@@ -675,7 +675,9 @@ fun EmuEyeClock(
 
         val delta = hypot((gazeRoll - lastFollowSfxX).toDouble(), (gazePitch - lastFollowSfxY).toDouble())
             .toFloat()
-        if (delta > 0.35f && soundEngine.playEyeFollowSound(context)) {
+        if (isSoundEnabled && isEyeFollowSoundEnabled && delta > 0.35f &&
+            soundEngine.playEyeFollowSound(context)
+        ) {
             lastFollowSfxX = gazeRoll
             lastFollowSfxY = gazePitch
         }

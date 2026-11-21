@@ -156,6 +156,10 @@ class LockScreenAccessibilityService : AccessibilityService() {
         if (configManager == null) {
             configManager = LauncherConfigManager(applicationContext)
         }
+        configManager?.let { manager ->
+            _configState.value = manager.currentConfig
+            hasLoadedConfig = true
+        }
 
         if (serviceScope == null) {
             serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

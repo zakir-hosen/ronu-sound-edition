@@ -16,10 +16,13 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.audio.LocalEmuAudioAllowed
 import com.example.model.SurfaceMode
+import com.example.service.LockScreenAccessibilityService
 import com.example.ui.LauncherSettingsSheet
 import com.example.ui.LockScreenAnimationsScreen
 import com.example.ui.MinimalHomeScreen
@@ -64,22 +67,30 @@ class MainActivity : ComponentActivity() {
                 viewModel.closeAnimations()
             }
 
+            val isAccessibilityOverlayShowing by
+                LockScreenAccessibilityService.isOverlayShowing.collectAsStateWithLifecycle()
+
             StillLauncherTheme(
                 amoledBlack = uiState.preferences.surfaceMode == SurfaceMode.AMOLED_BLACK
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    MinimalHomeScreen(
-                        pinnedApps = uiState.pinnedApps,
-                        surfaceMode = uiState.preferences.surfaceMode,
-                        config = uiState.config,
-                        showTiltDebugOverlay = uiState.preferences.showTiltDebugOverlay,
-                        onClockSensitivityChange = viewModel::setClockSensitivity,
-                        onMenuSensitivityChange = viewModel::setMenuSensitivity,
-                        onToggleTiltDebugOverlay = viewModel::setShowTiltDebugOverlay,
-                        onAppClick = viewModel::onAppClicked,
-                        onOpenDrawer = viewModel::openDrawer,
-                        onOpenSettings = viewModel::openSettings
-                    )
+                    val isHomeAudioAllowed = !uiState.isAnimationsOpen &&
+                        !uiState.isDrawerOpen &&
+                        !isAccessibilityOverlayShowing
+                    CompositionLocalProvider(LocalEmuAudioAllowed provides isHomeAudioAllowed) {
+                        MinimalHomeScreen(
+                            pinnedApps = uiState.pinnedApps,
+                            surfaceMode = uiState.preferences.surfaceMode,
+                            config = uiState.config,
+                            showTiltDebugOverlay = uiState.preferences.showTiltDebugOverlay,
+                            onClockSensitivityChange = viewModel::setClockSensitivity,
+                            onMenuSensitivityChange = viewModel::setMenuSensitivity,
+                            onToggleTiltDebugOverlay = viewModel::setShowTiltDebugOverlay,
+                            onAppClick = viewModel::onAppClicked,
+                            onOpenDrawer = viewModel::openDrawer,
+                            onOpenSettings = viewModel::openSettings
+                        )
+                    }
 
                     AnimatedVisibility(
                         visible = uiState.isDrawerOpen,
@@ -124,7 +135,8 @@ class MainActivity : ComponentActivity() {
                             onDismiss = viewModel::closeSettings,
                             onClockShadowEnabledChange = viewModel::setClockShadowEnabled,
                             onHomeSoundEnabledChange = viewModel::setHomeSoundEnabled,
-                            onLockScreenSoundEnabledChange = viewModel::setLockScreenSoundEnabled
+                            onLockScreenSoundEnabledChange = viewModel::setLockScreenSoundEnabled,
+                            onEyeFollowSoundEnabledChange = viewModel::setEyeFollowSoundEnabled
                         )
                     }
 

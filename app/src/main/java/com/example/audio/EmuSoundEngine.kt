@@ -7,6 +7,7 @@ import android.os.PowerManager
 import android.view.SoundEffectConstants
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -21,13 +22,21 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
+ * Optional composition-local gate to silence hidden/covered surfaces (e.g., Home clock behind
+ * full-screen Animations Preview or App Drawer) without altering the explicit `isSoundEnabled`
+ * routing parameter.
+ */
+val LocalEmuAudioAllowed = compositionLocalOf { true }
+
+/**
  * Native robotic SFX controller powered by Android's [ToneGenerator] on [AudioManager.STREAM_MUSIC]
  * with an [AudioManager.playSoundEffect] fallback.
  *
  * - Blink, Shake, and Happy Chirp use volume `85` on `STREAM_MUSIC` for crisp, clear output.
  * - Eye-Follow uses a dedicated low-volume (`25`) `ToneGenerator` with `TONE_PROP_PROMPT` (`15ms`)
  *   throttled by a `2500ms` cooldown so gaze shifts feel like a delicate mechanical micro-tick.
- * - Does not block playback on `RINGER_MODE_NORMAL`; gated only by `isEnabled`.
+ * - Does not block playback on `RINGER_MODE_NORMAL`; gated only by `isEnabled`, screen interactivity,
+ *   and host started state.
  */
 class EmuSoundEngine(
     context: Context,
@@ -55,7 +64,19 @@ class EmuSoundEngine(
     private var isShutDown: Boolean = false
 
     @Volatile
+    internal var isHostActive: Boolean = true
+
+    @Volatile
     var isEnabled: Boolean = enabled
+        set(value) {
+            field = value
+            if (!value) {
+                synchronized(toneLock) {
+                    happyChirpJob?.cancel()
+                    happyChirpJob = null
+                }
+            }
+        }
 
     @Volatile
     private var lastFollowSoundTimestampMs: Long = 0L
@@ -79,7 +100,7 @@ class EmuSoundEngine(
      * Plays a crisp, short high-tech blink chirp (`TONE_PROP_BEEP`, 45ms, volume 85).
      */
     fun playBlinkSound(): Boolean {
-        if (!isEnabled || !isScreenInteractive()) return false
+        if (!canPlayAudio()) return false
         return playTone(ToneGenerator.TONE_PROP_BEEP, BLINK_DURATION_MS)
     }
 
@@ -92,7 +113,7 @@ class EmuSoundEngine(
         context: Context = appContext,
         nowMs: Long = System.currentTimeMillis()
     ): Boolean {
-        if (!isEnabled || !isScreenInteractive()) return false
+        if (!canPlayAudio()) return false
         if (lastFollowSoundTimestampMs != 0L &&
             nowMs - lastFollowSoundTimestampMs < EYE_FOLLOW_COOLDOWN_MS
         ) {
@@ -106,7 +127,7 @@ class EmuSoundEngine(
      * Plays a quick shake warble (`TONE_CDMA_PIP`, 80ms, volume 85) throttled during continuous shake loops.
      */
     fun playShakeDizzySound(nowMs: Long = System.currentTimeMillis()): Boolean {
-        if (!isEnabled || !isScreenInteractive()) return false
+        if (!canPlayAudio()) return false
         if (lastShakeWarbleTimestampMs != 0L &&
             nowMs - lastShakeWarbleTimestampMs < SHAKE_WARBLE_COOLDOWN_MS
         ) {
@@ -120,14 +141,14 @@ class EmuSoundEngine(
      * Plays a cheerful two-tone happy chirp (`TONE_PROP_BEEP2` 70ms -> 90ms delay -> `TONE_PROP_ACK` 90ms).
      */
     fun playHappyChirp(): Boolean {
-        if (!isEnabled || !isScreenInteractive()) return false
+        if (!canPlayAudio()) return false
         synchronized(toneLock) {
             if (isShutDown) return false
             happyChirpJob?.cancel()
             happyChirpJob = chirpScope.launch {
                 playTone(ToneGenerator.TONE_PROP_BEEP2, HAPPY_CHIRP_FIRST_DURATION_MS)
                 delay(HAPPY_CHIRP_GAP_DELAY_MS)
-                if (isEnabled && !isShutDown && isScreenInteractive()) {
+                if (canPlayAudio()) {
                     playTone(ToneGenerator.TONE_PROP_ACK, HAPPY_CHIRP_SECOND_DURATION_MS)
                 }
             }
@@ -139,8 +160,12 @@ class EmuSoundEngine(
         return powerManager?.isInteractive != false
     }
 
+    private fun canPlayAudio(): Boolean {
+        return isEnabled && isHostActive && !isShutDown && isScreenInteractive()
+    }
+
     private fun playTone(toneType: Int, durationMs: Int): Boolean {
-        if (!isEnabled || !isScreenInteractive()) return false
+        if (!canPlayAudio()) return false
         lastTriggeredToneType = toneType
         lastTriggeredDurationMs = durationMs
         lastTriggeredVolume = TONE_VOLUME
@@ -162,7 +187,7 @@ class EmuSoundEngine(
     }
 
     private fun playMicroTickTone(context: Context): Boolean {
-        if (!isEnabled || !isScreenInteractive()) return false
+        if (!canPlayAudio()) return false
         lastTriggeredToneType = ToneGenerator.TONE_PROP_PROMPT
         lastTriggeredDurationMs = EYE_FOLLOW_DURATION_MS
         lastTriggeredVolume = MICRO_TICK_VOLUME
@@ -252,24 +277,36 @@ class EmuSoundEngine(
 }
 
 /**
- * Lifecycle-aware Composable helper returning an [EmuSoundEngine] that releases audio
- * resources on `ON_PAUSE`, `ON_STOP`, `ON_DESTROY`, or composition disposal.
+ * Lifecycle-aware Composable helper returning an [EmuSoundEngine] that respects both
+ * [enabled], [LocalEmuAudioAllowed], and host `ON_START` / `ON_STOP` lifecycle state so
+ * backgrounded Activities cannot leak blink sounds onto an active Lock Screen.
  */
 @Composable
 fun rememberEmuSoundEngine(enabled: Boolean): EmuSoundEngine {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val audioAllowed = LocalEmuAudioAllowed.current
     val engine = remember(context.applicationContext) {
-        EmuSoundEngine(context = context.applicationContext, enabled = enabled)
+        EmuSoundEngine(context = context.applicationContext, enabled = enabled && audioAllowed)
     }
-    engine.isEnabled = enabled
+    engine.isEnabled = enabled && audioAllowed
+    engine.isHostActive = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 
     DisposableEffect(lifecycleOwner, engine) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE,
+                Lifecycle.Event.ON_START,
+                Lifecycle.Event.ON_RESUME -> {
+                    engine.isHostActive = true
+                }
+                Lifecycle.Event.ON_PAUSE -> {
+                    engine.release()
+                }
                 Lifecycle.Event.ON_STOP,
-                Lifecycle.Event.ON_DESTROY -> engine.release()
+                Lifecycle.Event.ON_DESTROY -> {
+                    engine.isHostActive = false
+                    engine.release()
+                }
                 else -> Unit
             }
         }
@@ -277,6 +314,7 @@ fun rememberEmuSoundEngine(enabled: Boolean): EmuSoundEngine {
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            engine.isHostActive = false
             engine.shutdown()
         }
     }

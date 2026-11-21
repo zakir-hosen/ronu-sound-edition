@@ -44,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,7 +92,8 @@ fun LauncherSettingsSheet(
     onDismiss: () -> Unit,
     onClockShadowEnabledChange: (Boolean) -> Unit = {},
     onHomeSoundEnabledChange: (Boolean) -> Unit = {},
-    onLockScreenSoundEnabledChange: (Boolean) -> Unit = {}
+    onLockScreenSoundEnabledChange: (Boolean) -> Unit = {},
+    onEyeFollowSoundEnabledChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -121,7 +123,8 @@ fun LauncherSettingsSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+                .testTag("settings_sheet_list"),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -337,8 +340,12 @@ fun LauncherSettingsSheet(
                 }
             }
 
-            // Sound Effects Section (Home Screen Eye Sounds & Lock Screen Eye Sounds)
+            // Sound Effects Section (Home Screen, Lock Screen, and Eye-Follow Micro-Tick)
             item {
+                val homeSoundChecked by rememberUpdatedState(config.isHomeSoundEnabled)
+                val lockSoundChecked by rememberUpdatedState(config.isLockScreenSoundEnabled)
+                val followSoundChecked by rememberUpdatedState(config.isEyeFollowSoundEnabled)
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -352,7 +359,7 @@ fun LauncherSettingsSheet(
                             .fillMaxWidth()
                             .defaultMinSize(minHeight = 56.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .clickable { onHomeSoundEnabledChange(!config.isHomeSoundEnabled) }
+                            .clickable { onHomeSoundEnabledChange(!homeSoundChecked) }
                             .padding(vertical = 4.dp)
                             .testTag("settings_home_sound_row"),
                         verticalAlignment = Alignment.CenterVertically
@@ -371,7 +378,7 @@ fun LauncherSettingsSheet(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Switch(
-                            checked = config.isHomeSoundEnabled,
+                            checked = homeSoundChecked,
                             onCheckedChange = onHomeSoundEnabledChange,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
@@ -389,7 +396,7 @@ fun LauncherSettingsSheet(
                             .defaultMinSize(minHeight = 56.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .clickable {
-                                onLockScreenSoundEnabledChange(!config.isLockScreenSoundEnabled)
+                                onLockScreenSoundEnabledChange(!lockSoundChecked)
                             }
                             .padding(vertical = 4.dp)
                             .testTag("settings_lock_screen_sound_row"),
@@ -409,7 +416,7 @@ fun LauncherSettingsSheet(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Switch(
-                            checked = config.isLockScreenSoundEnabled,
+                            checked = lockSoundChecked,
                             onCheckedChange = onLockScreenSoundEnabledChange,
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
@@ -418,6 +425,44 @@ fun LauncherSettingsSheet(
                                 uncheckedTrackColor = MaterialTheme.colorScheme.background
                             ),
                             modifier = Modifier.testTag("settings_lock_screen_sound_switch")
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 56.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                onEyeFollowSoundEnabledChange(!followSoundChecked)
+                            }
+                            .padding(vertical = 4.dp)
+                            .testTag("settings_eye_follow_sound_row"),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.eye_follow_sound_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                            Text(
+                                text = stringResource(R.string.eye_follow_sound_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Switch(
+                            checked = followSoundChecked,
+                            onCheckedChange = onEyeFollowSoundEnabledChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.background
+                            ),
+                            modifier = Modifier.testTag("settings_eye_follow_sound_switch")
                         )
                     }
                 }

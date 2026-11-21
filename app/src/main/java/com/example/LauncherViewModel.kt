@@ -78,7 +78,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = LauncherUiState()
+        initialValue = LauncherUiState(config = configManager.currentConfig)
     )
 
     init {

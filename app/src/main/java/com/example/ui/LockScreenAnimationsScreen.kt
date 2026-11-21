@@ -55,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -925,12 +926,13 @@ private fun SoundSwitchRow(
     rowTag: String,
     switchTag: String
 ) {
+    val currentChecked by rememberUpdatedState(checked)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable { onCheckedChange(!checked) }
+            .clickable { onCheckedChange(!currentChecked) }
             .padding(vertical = 2.dp)
             .testTag(rowTag),
         verticalAlignment = Alignment.CenterVertically
@@ -952,7 +954,7 @@ private fun SoundSwitchRow(
         }
         Spacer(modifier = Modifier.width(12.dp))
         Switch(
-            checked = checked,
+            checked = currentChecked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = PureAmoledBlack,

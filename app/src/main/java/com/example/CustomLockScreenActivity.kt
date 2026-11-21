@@ -126,7 +126,7 @@ class CustomLockScreenActivity : FragmentActivity() {
 
         setContent {
             val config by configManager.configFlow.collectAsStateWithLifecycle(
-                initialValue = LauncherConfig()
+                initialValue = configManager.currentConfig
             )
 
             StillLauncherTheme(amoledBlack = true) {

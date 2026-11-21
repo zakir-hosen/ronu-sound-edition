@@ -24,6 +24,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -914,5 +915,135 @@ class ExampleRobolectricTest {
         assertTrue(engine.playEyeFollowSound(context = context, nowMs = 4_000L))
         assertTrue(engine.playHappyChirp())
         engine.shutdown()
+    }
+
+    @Test
+    fun `launcher config manager isolates home, lock screen, and eye follow sound keys and updates reactive state synchronously`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val managerA = com.example.model.LauncherConfigManager(context)
+        val managerB = com.example.model.LauncherConfigManager(context)
+
+        // Initial defaults: Home ON, Lock Screen OFF, Eye-Follow OFF
+        assertTrue(managerA.currentConfig.isHomeSoundEnabled)
+        assertFalse(managerA.currentConfig.isLockScreenSoundEnabled)
+        assertFalse(managerA.currentConfig.isEyeFollowSoundEnabled)
+
+        // Toggling Lock Screen sound must NOT affect Home Screen sound
+        managerA.setLockScreenSoundEnabled(true)
+        assertTrue(managerA.currentConfig.isLockScreenSoundEnabled)
+        assertTrue(managerA.currentConfig.isHomeSoundEnabled)
+        assertFalse(managerA.currentConfig.isEyeFollowSoundEnabled)
+        assertTrue(managerB.configState.value.isLockScreenSoundEnabled)
+        assertTrue(managerB.configComposeState.value.isLockScreenSoundEnabled)
+
+        // Toggling Home Screen sound OFF must NOT affect Lock Screen sound
+        managerA.setHomeSoundEnabled(false)
+        assertFalse(managerA.currentConfig.isHomeSoundEnabled)
+        assertTrue(managerA.currentConfig.isLockScreenSoundEnabled)
+        assertFalse(managerB.configState.value.isHomeSoundEnabled)
+        assertTrue(managerB.configState.value.isLockScreenSoundEnabled)
+
+        // Toggling Eye-Follow sound ON must NOT affect Home or Lock Screen sound
+        managerA.setEyeFollowSoundEnabled(true)
+        assertTrue(managerA.currentConfig.isEyeFollowSoundEnabled)
+        assertFalse(managerA.currentConfig.isHomeSoundEnabled)
+        assertTrue(managerA.currentConfig.isLockScreenSoundEnabled)
+
+        // Verify strict distinct SharedPreferences keys persisted on disk
+        val prefs = context.getSharedPreferences(
+            com.example.model.LauncherConfigManager.PREFS_NAME,
+            Context.MODE_PRIVATE
+        )
+        assertFalse(prefs.getBoolean("pref_home_screen_sound_enabled", true))
+        assertTrue(prefs.getBoolean("pref_lock_screen_sound_enabled", false))
+        assertTrue(prefs.getBoolean("pref_eye_follow_sound_enabled", false))
+
+        // Verify other settings persist cleanly alongside sound toggles
+        managerA.setClockSensitivity(1.7f)
+        managerA.setMenuSensitivity(0.9f)
+        managerA.setClockAlignment(LauncherAlignment.CENTER)
+        managerA.setMenuAlignment(LauncherAlignment.RIGHT)
+        managerA.setEyeColorHex("#00e5ff")
+        managerA.setClockShadowEnabled(false)
+        managerA.setShakeReactionEnabled(false)
+
+        val snapshot = managerB.currentConfig
+        assertEquals(1.7f, snapshot.clockSensitivity, 0.001f)
+        assertEquals(0.9f, snapshot.menuSensitivity, 0.001f)
+        assertEquals(LauncherAlignment.CENTER, snapshot.clockAlignment)
+        assertEquals(LauncherAlignment.RIGHT, snapshot.menuAlignment)
+        assertEquals("#00E5FF", snapshot.eyeColorHex)
+        assertFalse(snapshot.isClockShadowEnabled)
+        assertFalse(snapshot.isShakeReactionEnabled)
+    }
+
+    @Test
+    fun `settings sheet toggles home, lock screen, and eye follow sound switches independently`() {
+        var config = LauncherConfig()
+
+        composeRule.setContent {
+            var state by remember { mutableStateOf(config) }
+            StillLauncherTheme {
+                LauncherSettingsSheet(
+                    allApps = sampleApps,
+                    preferences = LauncherPreferences(pinnedPackageNames = listOf("com.android.chrome")),
+                    config = state,
+                    isDefaultLauncher = false,
+                    onTogglePinnedApp = {},
+                    onSurfaceModeChange = {},
+                    onClockSensitivityChange = {},
+                    onMenuSensitivityChange = {},
+                    onClockAlignmentChange = {},
+                    onMenuAlignmentChange = {},
+                    onResetToDefaults = {},
+                    onShowTiltDebugOverlayChange = {},
+                    onMindfulPauseChange = {},
+                    onOpenAnimations = {},
+                    onOpenLockScreenMode = {},
+                    onOpenDefaultLauncherSettings = {},
+                    onDismiss = {},
+                    onHomeSoundEnabledChange = {
+                        state = state.copy(isHomeSoundEnabled = it)
+                        config = state
+                    },
+                    onLockScreenSoundEnabledChange = {
+                        state = state.copy(isLockScreenSoundEnabled = it)
+                        config = state
+                    },
+                    onEyeFollowSoundEnabledChange = {
+                        state = state.copy(isEyeFollowSoundEnabled = it)
+                        config = state
+                    }
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("settings_sheet_list")
+            .performScrollToNode(hasTestTag("settings_sound_effects_section"))
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag("settings_home_sound_switch")
+            .performScrollTo()
+            .performClick()
+        composeRule.waitForIdle()
+        assertFalse(config.isHomeSoundEnabled)
+        assertFalse(config.isLockScreenSoundEnabled)
+        assertFalse(config.isEyeFollowSoundEnabled)
+
+        composeRule.onNodeWithTag("settings_lock_screen_sound_switch")
+            .performScrollTo()
+            .performClick()
+        composeRule.waitForIdle()
+        assertFalse(config.isHomeSoundEnabled)
+        assertTrue(config.isLockScreenSoundEnabled)
+        assertFalse(config.isEyeFollowSoundEnabled)
+
+        composeRule.onNodeWithTag("settings_eye_follow_sound_switch")
+            .performScrollTo()
+            .performClick()
+        composeRule.waitForIdle()
+        assertFalse(config.isHomeSoundEnabled)
+        assertTrue(config.isLockScreenSoundEnabled)
+        assertTrue(config.isEyeFollowSoundEnabled)
     }
 }
