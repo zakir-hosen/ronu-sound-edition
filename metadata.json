@@ -1,0 +1,6 @@
+{
+  "name": "Still",
+  "description": "An ultra-minimalist text-based Android home launcher with a 3D gyroscope parallax engine and mindful focus tools.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
