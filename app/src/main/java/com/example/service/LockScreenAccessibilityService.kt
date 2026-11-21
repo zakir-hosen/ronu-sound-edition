@@ -501,7 +501,8 @@ internal fun AccessibilityEmuLockOverlay(
                 shakeIntensity = shakeState.shakeIntensity,
                 isShakeReactionEnabled = config.isShakeReactionEnabled,
                 shakeRecoveryDurationSec = config.shakeRecoveryDurationSec,
-                isSoundEnabled = config.isLockScreenSoundEnabled
+                isSoundEnabled = config.isLockScreenSoundEnabled,
+                isEyeFollowSoundEnabled = config.isEyeFollowSoundEnabled
             )
         }
 

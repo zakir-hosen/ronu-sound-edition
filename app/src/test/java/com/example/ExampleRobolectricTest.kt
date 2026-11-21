@@ -794,17 +794,20 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `emu sound engine uses ToneGenerator on STREAM_MUSIC, enforces 600ms follow cooldown, and ignores ringer mode`() {
+    fun `emu sound engine uses ToneGenerator on STREAM_MUSIC, micro-tick for eye follow, and 2500ms cooldown`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         assertEquals(AudioManager.STREAM_MUSIC, EmuSoundEngine.STREAM_TYPE)
         assertEquals(85, EmuSoundEngine.TONE_VOLUME)
+        assertEquals(25, EmuSoundEngine.MICRO_TICK_VOLUME)
+        assertEquals(2_500L, EmuSoundEngine.EYE_FOLLOW_COOLDOWN_MS)
 
-        // Default config flags: Home ON, Lock Screen OFF
+        // Default config flags: Home ON, Lock Screen OFF, Eye-Follow OFF
         val defaultConfig = LauncherConfig()
         assertTrue(defaultConfig.isHomeSoundEnabled)
         assertFalse(defaultConfig.isLockScreenSoundEnabled)
+        assertFalse(defaultConfig.isEyeFollowSoundEnabled)
 
         val engine = EmuSoundEngine(context = context, enabled = true)
 
@@ -813,49 +816,56 @@ class ExampleRobolectricTest {
         assertTrue(engine.playBlinkSound())
         assertEquals(ToneGenerator.TONE_PROP_BEEP, engine.lastTriggeredToneType)
         assertEquals(45, engine.lastTriggeredDurationMs)
+        assertEquals(85, engine.lastTriggeredVolume)
 
         audioManager.ringerMode = AudioManager.RINGER_MODE_SILENT
-        assertTrue(engine.playEyeFollowSound(nowMs = 1_000L))
-        assertEquals(ToneGenerator.TONE_PROP_ACK, engine.lastTriggeredToneType)
-        assertEquals(35, engine.lastTriggeredDurationMs)
+        assertTrue(engine.playEyeFollowSound(context = context, nowMs = 1_000L))
+        assertEquals(ToneGenerator.TONE_PROP_PROMPT, engine.lastTriggeredToneType)
+        assertEquals(15, engine.lastTriggeredDurationMs)
+        assertEquals(25, engine.lastTriggeredVolume)
 
-        // Cooldown of 600ms suppresses rapid eye-follow jitter
-        assertFalse(engine.playEyeFollowSound(nowMs = 1_350L))
-        assertTrue(engine.playEyeFollowSound(nowMs = 1_650L))
+        // Cooldown of 2500ms suppresses repetitive gaze shifts
+        assertFalse(engine.playEyeFollowSound(context = context, nowMs = 2_800L))
+        assertTrue(engine.playEyeFollowSound(context = context, nowMs = 3_600L))
 
         audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
         assertTrue(engine.playShakeDizzySound(nowMs = 2_000L))
         assertEquals(ToneGenerator.TONE_CDMA_PIP, engine.lastTriggeredToneType)
         assertEquals(80, engine.lastTriggeredDurationMs)
+        assertEquals(85, engine.lastTriggeredVolume)
 
         assertTrue(engine.playHappyChirp())
         Thread.sleep(200L)
         assertEquals(ToneGenerator.TONE_PROP_ACK, engine.lastTriggeredToneType)
         assertEquals(90, engine.lastTriggeredDurationMs)
+        assertEquals(85, engine.lastTriggeredVolume)
 
         // Only gated by isEnabled (LauncherConfig sound flags)
         engine.isEnabled = false
         assertFalse(engine.playBlinkSound())
-        assertFalse(engine.playEyeFollowSound(nowMs = 5_000L))
-        assertFalse(engine.playShakeDizzySound(nowMs = 5_000L))
+        assertFalse(engine.playEyeFollowSound(context = context, nowMs = 8_000L))
+        assertFalse(engine.playShakeDizzySound(nowMs = 8_000L))
         assertFalse(engine.playHappyChirp())
         engine.shutdown()
     }
 
     @Test
-    fun `animations screen and settings sheet expose independent home and lock screen sound toggles`() {
+    fun `animations screen exposes independent home, lock screen, and eye-follow micro-tick sound toggles`() {
         var homeSound = LauncherConfig.DEFAULT_HOME_SOUND_ENABLED
         var lockSound = LauncherConfig.DEFAULT_LOCK_SCREEN_SOUND_ENABLED
+        var eyeFollowSound = LauncherConfig.DEFAULT_EYE_FOLLOW_SOUND_ENABLED
 
         composeRule.setContent {
             var currentHomeSound by remember { mutableStateOf(homeSound) }
             var currentLockSound by remember { mutableStateOf(lockSound) }
+            var currentEyeFollowSound by remember { mutableStateOf(eyeFollowSound) }
             StillLauncherTheme(amoledBlack = true) {
                 LockScreenAnimationsScreen(
                     selectedStyle = EmuAnimationStyle.BOUNCY_PLAYFUL,
                     clockSensitivity = 1.0f,
                     isHomeSoundEnabled = currentHomeSound,
                     isLockScreenSoundEnabled = currentLockSound,
+                    isEyeFollowSoundEnabled = currentEyeFollowSound,
                     onSelectStyle = {},
                     onSetHomeSoundEnabled = {
                         currentHomeSound = it
@@ -864,6 +874,10 @@ class ExampleRobolectricTest {
                     onSetLockScreenSoundEnabled = {
                         currentLockSound = it
                         lockSound = it
+                    },
+                    onSetEyeFollowSoundEnabled = {
+                        currentEyeFollowSound = it
+                        eyeFollowSound = it
                     },
                     onPreviewLockScreen = {},
                     onBack = {}
@@ -879,5 +893,26 @@ class ExampleRobolectricTest {
         assertFalse(homeSound)
         composeRule.onNodeWithTag("lock_screen_sound_switch").assertIsDisplayed().performClick()
         assertTrue(lockSound)
+        composeRule.onNodeWithTag("eye_follow_sound_switch").assertIsDisplayed().performClick()
+        assertTrue(eyeFollowSound)
+    }
+
+    @Test
+    fun `emu sound engine blocks audio when screen is not interactive and resumes when interactive`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        val engine = EmuSoundEngine(context = context, enabled = true)
+
+        shadowOf(powerManager).setIsInteractive(false)
+        assertFalse(engine.playBlinkSound())
+        assertFalse(engine.playEyeFollowSound(context = context, nowMs = 1_000L))
+        assertFalse(engine.playShakeDizzySound(nowMs = 1_000L))
+        assertFalse(engine.playHappyChirp())
+
+        shadowOf(powerManager).setIsInteractive(true)
+        assertTrue(engine.playBlinkSound())
+        assertTrue(engine.playEyeFollowSound(context = context, nowMs = 4_000L))
+        assertTrue(engine.playHappyChirp())
+        engine.shutdown()
     }
 }

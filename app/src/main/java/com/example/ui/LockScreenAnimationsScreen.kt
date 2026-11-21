@@ -117,6 +117,8 @@ fun LockScreenAnimationsScreen(
     onSetHomeSoundEnabled: (Boolean) -> Unit = {},
     isLockScreenSoundEnabled: Boolean = LauncherConfig.DEFAULT_LOCK_SCREEN_SOUND_ENABLED,
     onSetLockScreenSoundEnabled: (Boolean) -> Unit = {},
+    isEyeFollowSoundEnabled: Boolean = LauncherConfig.DEFAULT_EYE_FOLLOW_SOUND_ENABLED,
+    onSetEyeFollowSoundEnabled: (Boolean) -> Unit = {},
     permissionStatusOverride: LockScreenPermissionStatus? = null
 ) {
     val haptic = LocalHapticFeedback.current
@@ -302,6 +304,7 @@ fun LockScreenAnimationsScreen(
                                 isShakeReactionEnabled = isShakeReactionEnabled,
                                 shakeRecoveryDurationSec = shakeRecoveryDurationSec,
                                 isSoundEnabled = true,
+                                isEyeFollowSoundEnabled = isEyeFollowSoundEnabled,
                                 testBlinkTrigger = testBlinkCount,
                                 shakeTrigger = shakeSpinCount
                             )
@@ -426,6 +429,7 @@ fun LockScreenAnimationsScreen(
                     SoundEffectsControlCard(
                         isHomeSoundEnabled = isHomeSoundEnabled,
                         isLockScreenSoundEnabled = isLockScreenSoundEnabled,
+                        isEyeFollowSoundEnabled = isEyeFollowSoundEnabled,
                         onHomeSoundChange = { enabled ->
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSetHomeSoundEnabled(enabled)
@@ -433,6 +437,10 @@ fun LockScreenAnimationsScreen(
                         onLockScreenSoundChange = { enabled ->
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             onSetLockScreenSoundEnabled(enabled)
+                        },
+                        onEyeFollowSoundChange = { enabled ->
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSetEyeFollowSoundEnabled(enabled)
                         },
                         onTestSoundClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -817,8 +825,10 @@ private fun ShakeReactionControlCard(
 private fun SoundEffectsControlCard(
     isHomeSoundEnabled: Boolean,
     isLockScreenSoundEnabled: Boolean,
+    isEyeFollowSoundEnabled: Boolean,
     onHomeSoundChange: (Boolean) -> Unit,
     onLockScreenSoundChange: (Boolean) -> Unit,
+    onEyeFollowSoundChange: (Boolean) -> Unit,
     onTestSoundClick: () -> Unit
 ) {
     Surface(
@@ -892,6 +902,15 @@ private fun SoundEffectsControlCard(
                 onCheckedChange = onLockScreenSoundChange,
                 rowTag = "lock_screen_sound_toggle_row",
                 switchTag = "lock_screen_sound_switch"
+            )
+
+            SoundSwitchRow(
+                title = stringResource(R.string.eye_follow_sound_title),
+                subtitle = stringResource(R.string.eye_follow_sound_subtitle),
+                checked = isEyeFollowSoundEnabled,
+                onCheckedChange = onEyeFollowSoundChange,
+                rowTag = "eye_follow_sound_toggle_row",
+                switchTag = "eye_follow_sound_switch"
             )
         }
     }

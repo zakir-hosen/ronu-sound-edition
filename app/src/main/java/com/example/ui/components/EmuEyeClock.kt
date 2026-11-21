@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -113,10 +114,12 @@ fun EmuEyeClock(
     isShakeReactionEnabled: Boolean = LauncherConfig.DEFAULT_SHAKE_REACTION_ENABLED,
     shakeRecoveryDurationSec: Float = LauncherConfig.DEFAULT_SHAKE_RECOVERY_DURATION_SEC,
     isSoundEnabled: Boolean = LauncherConfig.DEFAULT_HOME_SOUND_ENABLED,
+    isEyeFollowSoundEnabled: Boolean = LauncherConfig.DEFAULT_EYE_FOLLOW_SOUND_ENABLED,
     testBlinkTrigger: Int = 0,
     shakeTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
@@ -657,8 +660,8 @@ fun EmuEyeClock(
     var hasSeededFollowSfx by remember { mutableStateOf(false) }
     var lastFollowSfxX by remember { mutableFloatStateOf(0f) }
     var lastFollowSfxY by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(gazeRoll, gazePitch, isSoundEnabled, shakePhase) {
-        if (!isSoundEnabled) {
+    LaunchedEffect(gazeRoll, gazePitch, isSoundEnabled, isEyeFollowSoundEnabled, shakePhase) {
+        if (!isSoundEnabled || !isEyeFollowSoundEnabled) {
             hasSeededFollowSfx = false
             return@LaunchedEffect
         }
@@ -672,7 +675,7 @@ fun EmuEyeClock(
 
         val delta = hypot((gazeRoll - lastFollowSfxX).toDouble(), (gazePitch - lastFollowSfxY).toDouble())
             .toFloat()
-        if (delta >= 0.28f && soundEngine.playEyeFollowSound()) {
+        if (delta > 0.35f && soundEngine.playEyeFollowSound(context)) {
             lastFollowSfxX = gazeRoll
             lastFollowSfxY = gazePitch
         }

@@ -79,7 +79,8 @@ data class LauncherConfig(
     val isShakeReactionEnabled: Boolean = DEFAULT_SHAKE_REACTION_ENABLED,
     val shakeRecoveryDurationSec: Float = DEFAULT_SHAKE_RECOVERY_DURATION_SEC,
     val isHomeSoundEnabled: Boolean = DEFAULT_HOME_SOUND_ENABLED,
-    val isLockScreenSoundEnabled: Boolean = DEFAULT_LOCK_SCREEN_SOUND_ENABLED
+    val isLockScreenSoundEnabled: Boolean = DEFAULT_LOCK_SCREEN_SOUND_ENABLED,
+    val isEyeFollowSoundEnabled: Boolean = DEFAULT_EYE_FOLLOW_SOUND_ENABLED
 ) {
     companion object {
         const val DEFAULT_CLOCK_SENSITIVITY = 1.0f
@@ -96,6 +97,7 @@ data class LauncherConfig(
         const val MAX_SHAKE_RECOVERY_DURATION_SEC = 6.0f
         const val DEFAULT_HOME_SOUND_ENABLED = true
         const val DEFAULT_LOCK_SCREEN_SOUND_ENABLED = false
+        const val DEFAULT_EYE_FOLLOW_SOUND_ENABLED = false
     }
 }
 
@@ -146,6 +148,8 @@ class LauncherConfigManager(private val context: Context) {
             prefs[KEY_HOME_SOUND_ENABLED] ?: LauncherConfig.DEFAULT_HOME_SOUND_ENABLED
         val isLockScreenSoundEnabled =
             prefs[KEY_LOCK_SCREEN_SOUND_ENABLED] ?: LauncherConfig.DEFAULT_LOCK_SCREEN_SOUND_ENABLED
+        val isEyeFollowSoundEnabled =
+            prefs[KEY_EYE_FOLLOW_SOUND_ENABLED] ?: LauncherConfig.DEFAULT_EYE_FOLLOW_SOUND_ENABLED
 
         LauncherConfig(
             clockSensitivity = clockSens,
@@ -160,7 +164,8 @@ class LauncherConfigManager(private val context: Context) {
             isShakeReactionEnabled = isShakeReactionEnabled,
             shakeRecoveryDurationSec = shakeRecoveryDurationSec,
             isHomeSoundEnabled = isHomeSoundEnabled,
-            isLockScreenSoundEnabled = isLockScreenSoundEnabled
+            isLockScreenSoundEnabled = isLockScreenSoundEnabled,
+            isEyeFollowSoundEnabled = isEyeFollowSoundEnabled
         )
     }
 
@@ -245,6 +250,12 @@ class LauncherConfigManager(private val context: Context) {
         }
     }
 
+    suspend fun setEyeFollowSoundEnabled(enabled: Boolean) {
+        context.launcherConfigDataStore.edit { prefs ->
+            prefs[KEY_EYE_FOLLOW_SOUND_ENABLED] = enabled
+        }
+    }
+
     suspend fun resetToDefaults() {
         context.launcherConfigDataStore.edit { prefs ->
             prefs[KEY_CLOCK_SENSITIVITY] = LauncherConfig.DEFAULT_CLOCK_SENSITIVITY
@@ -261,6 +272,7 @@ class LauncherConfigManager(private val context: Context) {
                 LauncherConfig.DEFAULT_SHAKE_RECOVERY_DURATION_SEC
             prefs[KEY_HOME_SOUND_ENABLED] = LauncherConfig.DEFAULT_HOME_SOUND_ENABLED
             prefs[KEY_LOCK_SCREEN_SOUND_ENABLED] = LauncherConfig.DEFAULT_LOCK_SCREEN_SOUND_ENABLED
+            prefs[KEY_EYE_FOLLOW_SOUND_ENABLED] = LauncherConfig.DEFAULT_EYE_FOLLOW_SOUND_ENABLED
         }
     }
 
@@ -283,5 +295,7 @@ class LauncherConfigManager(private val context: Context) {
         private val KEY_HOME_SOUND_ENABLED = booleanPreferencesKey("is_home_sound_enabled")
         private val KEY_LOCK_SCREEN_SOUND_ENABLED =
             booleanPreferencesKey("is_lock_screen_sound_enabled")
+        private val KEY_EYE_FOLLOW_SOUND_ENABLED =
+            booleanPreferencesKey("is_eye_follow_sound_enabled")
     }
 }

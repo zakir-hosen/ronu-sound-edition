@@ -144,6 +144,7 @@ class MainActivity : ComponentActivity() {
                             shakeRecoveryDurationSec = uiState.config.shakeRecoveryDurationSec,
                             isHomeSoundEnabled = uiState.config.isHomeSoundEnabled,
                             isLockScreenSoundEnabled = uiState.config.isLockScreenSoundEnabled,
+                            isEyeFollowSoundEnabled = uiState.config.isEyeFollowSoundEnabled,
                             onSelectStyle = viewModel::setEmuAnimationStyle,
                             onSelectEyeColor = viewModel::setEyeColorHex,
                             onSetClockShadowEnabled = viewModel::setClockShadowEnabled,
@@ -153,6 +154,7 @@ class MainActivity : ComponentActivity() {
                             onSetShakeRecoveryDurationSec = viewModel::setShakeRecoveryDurationSec,
                             onSetHomeSoundEnabled = viewModel::setHomeSoundEnabled,
                             onSetLockScreenSoundEnabled = viewModel::setLockScreenSoundEnabled,
+                            onSetEyeFollowSoundEnabled = viewModel::setEyeFollowSoundEnabled,
                             onPreviewLockScreen = {
                                 startActivity(Intent(this@MainActivity, CustomLockScreenActivity::class.java))
                             },

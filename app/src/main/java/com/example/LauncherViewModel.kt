@@ -263,6 +263,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun setEyeFollowSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            configManager.setEyeFollowSoundEnabled(enabled)
+        }
+    }
+
     fun resetConfigToDefaults() {
         viewModelScope.launch {
             configManager.resetToDefaults()

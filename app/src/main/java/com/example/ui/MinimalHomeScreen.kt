@@ -215,7 +215,8 @@ fun MinimalHomeScreen(
                 shakeIntensity = shakeState.shakeIntensity,
                 isShakeReactionEnabled = config.isShakeReactionEnabled,
                 shakeRecoveryDurationSec = config.shakeRecoveryDurationSec,
-                isSoundEnabled = config.isHomeSoundEnabled
+                isSoundEnabled = config.isHomeSoundEnabled,
+                isEyeFollowSoundEnabled = config.isEyeFollowSoundEnabled
             )
 
             // Layer 3: Pinned Text App Menu with independent sensitivity & alignment

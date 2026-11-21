@@ -99,5 +99,7 @@
     <string name="home_sound_subtitle">Soft robotic chirps, blinks &amp; servo sweeps on the home screen</string>
     <string name="lock_screen_sound_title">Lock Screen Eye Sounds</string>
     <string name="lock_screen_sound_subtitle">Robotic SFX when viewing Emu on the lock screen</string>
+    <string name="eye_follow_sound_title">Eye-Follow Micro-Tick Sound</string>
+    <string name="eye_follow_sound_subtitle">Delicate mechanical tick on large gaze shifts (2.5s cooldown)</string>
     <string name="test_sound">Test Sound</string>
 </resources>

@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -140,6 +139,7 @@ class CustomLockScreenActivity : FragmentActivity() {
                     isShakeReactionEnabled = config.isShakeReactionEnabled,
                     shakeRecoveryDurationSec = config.shakeRecoveryDurationSec,
                     isSoundEnabled = config.isLockScreenSoundEnabled,
+                    isEyeFollowSoundEnabled = config.isEyeFollowSoundEnabled,
                     onUnlockRequested = { dismissKeyguardAndFinish() },
                     onBiometricRequested = { triggerBiometricOrKeyguardUnlock() }
                 )
@@ -239,6 +239,7 @@ internal fun EmuLockScreenContent(
     isShakeReactionEnabled: Boolean = LauncherConfig.DEFAULT_SHAKE_REACTION_ENABLED,
     shakeRecoveryDurationSec: Float = LauncherConfig.DEFAULT_SHAKE_RECOVERY_DURATION_SEC,
     isSoundEnabled: Boolean = LauncherConfig.DEFAULT_LOCK_SCREEN_SOUND_ENABLED,
+    isEyeFollowSoundEnabled: Boolean = LauncherConfig.DEFAULT_EYE_FOLLOW_SOUND_ENABLED,
     onBiometricRequested: () -> Unit = onUnlockRequested
 ) {
     val haptic = LocalHapticFeedback.current
@@ -293,7 +294,8 @@ internal fun EmuLockScreenContent(
                 shakeIntensity = shakeState.shakeIntensity,
                 isShakeReactionEnabled = isShakeReactionEnabled,
                 shakeRecoveryDurationSec = shakeRecoveryDurationSec,
-                isSoundEnabled = isSoundEnabled
+                isSoundEnabled = isSoundEnabled,
+                isEyeFollowSoundEnabled = isEyeFollowSoundEnabled
             )
         }
 
